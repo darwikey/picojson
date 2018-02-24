@@ -65,12 +65,11 @@ extern "C" {
 #endif
 #endif // PICOJSON_USE_RVALUE_REFERENCE
 
-// experimental support for int64_t (see README.mkdn for detail)
-#ifdef PICOJSON_USE_INT64
+
 #define __STDC_FORMAT_MACROS
 #include <errno.h>
 #include <inttypes.h>
-#endif
+
 
 // to disable the use of localeconv(3), set PICOJSON_USE_LOCALE to 0
 #ifndef PICOJSON_USE_LOCALE
@@ -102,17 +101,14 @@ extern "C" {
 
 namespace picojson {
 
-enum {
-  null_type,
-  boolean_type,
-  number_type,
-  string_type,
-  array_type,
-  object_type
-#ifdef PICOJSON_USE_INT64
-  ,
-  int64_type
-#endif
+enum class eValueType{
+  null,
+  boolean,
+  number,
+  string,
+  array,
+  object,
+  int64
 };
 
 enum { INDENT_WIDTH = 2 };
@@ -126,25 +122,21 @@ public:
   union _storage {
     bool boolean_;
     double number_;
-#ifdef PICOJSON_USE_INT64
     int64_t int64_;
-#endif
     std::string *string_;
     array *array_;
     object *object_;
   };
 
 protected:
-  int type_;
+	eValueType type_;
   _storage u_;
 
 public:
   value();
-  value(int type, bool);
+  value(eValueType type, bool);
   explicit value(bool b);
-#ifdef PICOJSON_USE_INT64
   explicit value(int64_t i);
-#endif
   explicit value(double n);
   explicit value(const std::string &s);
   explicit value(const array &a);
@@ -194,40 +186,43 @@ private:
 typedef value::array array;
 typedef value::object object;
 
-inline value::value() : type_(null_type), u_() {
+inline value::value() : type_(eValueType::null), u_() {
 }
 
-inline value::value(int type, bool) : type_(type), u_() {
+inline value::value(eValueType type, bool) : type_(type), u_() {
   switch (type) {
-#define INIT(p, v)                                                                                                                 \
-  case p##type:                                                                                                                    \
-    u_.p = v;                                                                                                                      \
-    break
-    INIT(boolean_, false);
-    INIT(number_, 0.0);
-#ifdef PICOJSON_USE_INT64
-    INIT(int64_, 0);
-#endif
-    INIT(string_, new std::string());
-    INIT(array_, new array());
-    INIT(object_, new object());
-#undef INIT
+  case eValueType::boolean:
+	  u_.boolean_ = false;
+	  break;
+  case eValueType::number:
+	  u_.number_ = 0.0;
+	  break;
+  case eValueType::int64:
+	  u_.int64_ = 0;
+	  break;
+  case eValueType::string:
+	  u_.string_ = new std::string();
+	  break;
+  case eValueType::array:
+	  u_.array_ = new array();
+	  break;
+  case eValueType::object:
+	  u_.object_ = new object();
+	  break;
   default:
     break;
   }
 }
 
-inline value::value(bool b) : type_(boolean_type), u_() {
+inline value::value(bool b) : type_(eValueType::boolean), u_() {
   u_.boolean_ = b;
 }
 
-#ifdef PICOJSON_USE_INT64
-inline value::value(int64_t i) : type_(int64_type), u_() {
+inline value::value(int64_t i) : type_(eValueType::int64), u_() {
   u_.int64_ = i;
 }
-#endif
 
-inline value::value(double n) : type_(number_type), u_() {
+inline value::value(double n) : type_(eValueType::number), u_() {
   if (
 #ifdef _MSC_VER
       !_finite(n)
@@ -242,53 +237,55 @@ inline value::value(double n) : type_(number_type), u_() {
   u_.number_ = n;
 }
 
-inline value::value(const std::string &s) : type_(string_type), u_() {
+inline value::value(const std::string &s) : type_(eValueType::string), u_() {
   u_.string_ = new std::string(s);
 }
 
-inline value::value(const array &a) : type_(array_type), u_() {
+inline value::value(const array &a) : type_(eValueType::array), u_() {
   u_.array_ = new array(a);
 }
 
-inline value::value(const object &o) : type_(object_type), u_() {
+inline value::value(const object &o) : type_(eValueType::object), u_() {
   u_.object_ = new object(o);
 }
 
 #if PICOJSON_USE_RVALUE_REFERENCE
-inline value::value(std::string &&s) : type_(string_type), u_() {
+inline value::value(std::string &&s) : type_(eValueType::string), u_() {
   u_.string_ = new std::string(std::move(s));
 }
 
-inline value::value(array &&a) : type_(array_type), u_() {
+inline value::value(array &&a) : type_(eValueType::array), u_() {
   u_.array_ = new array(std::move(a));
 }
 
-inline value::value(object &&o) : type_(object_type), u_() {
+inline value::value(object &&o) : type_(eValueType::object), u_() {
   u_.object_ = new object(std::move(o));
 }
 #endif
 
-inline value::value(const char *s) : type_(string_type), u_() {
+inline value::value(const char *s) : type_(eValueType::string), u_() {
   u_.string_ = new std::string(s);
 }
 
-inline value::value(const char *s, size_t len) : type_(string_type), u_() {
+inline value::value(const char *s, size_t len) : type_(eValueType::string), u_() {
   u_.string_ = new std::string(s, len);
 }
 
 inline void value::clear() {
-  switch (type_) {
-#define DEINIT(p)                                                                                                                  \
-  case p##type:                                                                                                                    \
-    delete u_.p;                                                                                                                   \
-    break
-    DEINIT(string_);
-    DEINIT(array_);
-    DEINIT(object_);
-#undef DEINIT
-  default:
-    break;
-  }
+	switch (type_) {
+	case eValueType::string:
+		delete u_.string_;
+		break;
+	case eValueType::array:
+		delete u_.array_;
+		break;
+
+	case eValueType::object:
+		delete u_.object_;
+		break;
+	default:
+		break;
+	}
 }
 
 inline value::~value() {
@@ -297,17 +294,18 @@ inline value::~value() {
 
 inline value::value(const value &x) : type_(x.type_), u_() {
   switch (type_) {
-#define INIT(p, v)                                                                                                                 \
-  case p##type:                                                                                                                    \
-    u_.p = v;                                                                                                                      \
-    break
-    INIT(string_, new std::string(*x.u_.string_));
-    INIT(array_, new array(*x.u_.array_));
-    INIT(object_, new object(*x.u_.object_));
-#undef INIT
+  case eValueType::string:
+	  u_.string_ = new std::string(*x.u_.string_);
+	  break;
+  case eValueType::array:
+	  u_.array_ = new array(*x.u_.array_);
+	  break;
+  case eValueType::object:
+	  u_.object_ = new object(*x.u_.object_);
+	  break;
   default:
-    u_ = x.u_;
-    break;
+	  u_ = x.u_;
+	  break;
   }
 }
 
@@ -320,7 +318,7 @@ inline value &value::operator=(const value &x) {
 }
 
 #if PICOJSON_USE_RVALUE_REFERENCE
-inline value::value(value &&x) throw() : type_(null_type), u_() {
+inline value::value(value &&x) throw() : type_(eValueType::null), u_() {
   swap(x);
 }
 inline value &value::operator=(value &&x) throw() {
@@ -333,25 +331,19 @@ inline void value::swap(value &x) throw() {
   std::swap(u_, x.u_);
 }
 
-#define IS(ctype, jtype)                                                                                                           \
-  template <> inline bool value::is<ctype>() const {                                                                               \
-    return type_ == jtype##_type;                                                                                                  \
+#define IS(ctype, jtype)								\
+  template <> inline bool value::is<ctype>() const {	\
+    return type_ == jtype;								\
   }
-IS(null, null)
-IS(bool, boolean)
-#ifdef PICOJSON_USE_INT64
-IS(int64_t, int64)
-#endif
-IS(std::string, string)
-IS(array, array)
-IS(object, object)
+IS(null, eValueType::null)
+IS(bool, eValueType::boolean)
+IS(int64_t, eValueType::int64)
+IS(std::string, eValueType::string)
+IS(array, eValueType::array)
+IS(object, eValueType::object)
 #undef IS
 template <> inline bool value::is<double>() const {
-  return type_ == number_type
-#ifdef PICOJSON_USE_INT64
-         || type_ == int64_type
-#endif
-      ;
+  return type_ == eValueType::number || type_ == eValueType::int64;
 }
 
 #define GET(ctype, var)                                                                                                            \
@@ -367,58 +359,51 @@ GET(bool, u_.boolean_)
 GET(std::string, *u_.string_)
 GET(array, *u_.array_)
 GET(object, *u_.object_)
-#ifdef PICOJSON_USE_INT64
 GET(double,
-    (type_ == int64_type && (const_cast<value *>(this)->type_ = number_type, const_cast<value *>(this)->u_.number_ = u_.int64_),
+    (type_ == eValueType::int64 && (const_cast<value *>(this)->type_ = eValueType::number, const_cast<value *>(this)->u_.number_ = u_.int64_),
      u_.number_))
 GET(int64_t, u_.int64_)
-#else
-GET(double, u_.number_)
-#endif
+//GET(double, u_.number_)
 #undef GET
 
-#define SET(ctype, jtype, setter)                                                                                                  \
-  template <> inline void value::set<ctype>(const ctype &_val) {                                                                   \
-    clear();                                                                                                                       \
-    type_ = jtype##_type;                                                                                                          \
-    setter                                                                                                                         \
+#define SET(ctype, jtype, setter)									\
+  template <> inline void value::set<ctype>(const ctype &_val) {	\
+    clear();														\
+    type_ = jtype;													\
+    setter															\
   }
-SET(bool, boolean, u_.boolean_ = _val;)
-SET(std::string, string, u_.string_ = new std::string(_val);)
-SET(array, array, u_.array_ = new array(_val);)
-SET(object, object, u_.object_ = new object(_val);)
-SET(double, number, u_.number_ = _val;)
-#ifdef PICOJSON_USE_INT64
-SET(int64_t, int64, u_.int64_ = _val;)
-#endif
+SET(bool, eValueType::boolean, u_.boolean_ = _val;)
+SET(std::string, eValueType::string, u_.string_ = new std::string(_val);)
+SET(array, eValueType::array, u_.array_ = new array(_val);)
+SET(object, eValueType::object, u_.object_ = new object(_val);)
+SET(double, eValueType::number, u_.number_ = _val;)
+SET(int64_t, eValueType::int64, u_.int64_ = _val;)
 #undef SET
 
 #if PICOJSON_USE_RVALUE_REFERENCE
-#define MOVESET(ctype, jtype, setter)                                                                                              \
-  template <> inline void value::set<ctype>(ctype && _val) {                                                                       \
-    clear();                                                                                                                       \
-    type_ = jtype##_type;                                                                                                          \
-    setter                                                                                                                         \
+#define MOVESET(ctype, jtype, setter)							\
+  template <> inline void value::set<ctype>(ctype && _val) {	\
+    clear();													\
+    type_ = jtype;												\
+    setter														\
   }
-MOVESET(std::string, string, u_.string_ = new std::string(std::move(_val));)
-MOVESET(array, array, u_.array_ = new array(std::move(_val));)
-MOVESET(object, object, u_.object_ = new object(std::move(_val));)
+MOVESET(std::string, eValueType::string, u_.string_ = new std::string(std::move(_val));)
+MOVESET(array, eValueType::array, u_.array_ = new array(std::move(_val));)
+MOVESET(object, eValueType::object, u_.object_ = new object(std::move(_val));)
 #undef MOVESET
 #endif
 
 inline bool value::evaluate_as_boolean() const {
   switch (type_) {
-  case null_type:
+  case eValueType::null:
     return false;
-  case boolean_type:
+  case eValueType::boolean:
     return u_.boolean_;
-  case number_type:
+  case eValueType::number:
     return u_.number_ != 0;
-#ifdef PICOJSON_USE_INT64
-  case int64_type:
+  case eValueType::int64:
     return u_.int64_ != 0;
-#endif
-  case string_type:
+  case eValueType::string:
     return !u_.string_->empty();
   default:
     return true;
@@ -464,18 +449,16 @@ inline bool value::contains(const std::string &key) const {
 
 inline std::string value::to_str() const {
   switch (type_) {
-  case null_type:
+  case eValueType::null:
     return "null";
-  case boolean_type:
+  case eValueType::boolean:
     return u_.boolean_ ? "true" : "false";
-#ifdef PICOJSON_USE_INT64
-  case int64_type: {
+  case eValueType::int64: {
     char buf[sizeof("-9223372036854775808")];
     SNPRINTF(buf, sizeof(buf), "%" PRId64, u_.int64_);
     return buf;
   }
-#endif
-  case number_type: {
+  case eValueType::number: {
     char buf[256];
     double tmp;
     SNPRINTF(buf, sizeof(buf), fabs(u_.number_) < (1ULL << 53) && modf(u_.number_, &tmp) == 0 ? "%.f" : "%.17g", u_.number_);
@@ -492,11 +475,11 @@ inline std::string value::to_str() const {
 #endif
     return buf;
   }
-  case string_type:
+  case eValueType::string:
     return *u_.string_;
-  case array_type:
+  case eValueType::array:
     return "array";
-  case object_type:
+  case eValueType::object:
     return "object";
   default:
     PICOJSON_ASSERT(0);
@@ -565,10 +548,10 @@ template <typename Iter> void value::_indent(Iter oi, int indent) {
 
 template <typename Iter> void value::_serialize(Iter oi, int indent) const {
   switch (type_) {
-  case string_type:
+  case eValueType::string:
     serialize_str(*u_.string_, oi);
     break;
-  case array_type: {
+  case eValueType::array: {
     *oi++ = '[';
     if (indent != -1) {
       ++indent;
@@ -591,7 +574,7 @@ template <typename Iter> void value::_serialize(Iter oi, int indent) const {
     *oi++ = ']';
     break;
   }
-  case object_type: {
+  case eValueType::object: {
     *oi++ = '{';
     if (indent != -1) {
       ++indent;
@@ -888,7 +871,6 @@ template <typename Context, typename Iter> inline bool _parse(Context &ctx, inpu
       if (num_str.empty()) {
         return false;
       }
-#ifdef PICOJSON_USE_INT64
       {
         errno = 0;
         intmax_t ival = strtoimax(num_str.c_str(), &endp, 10);
@@ -898,7 +880,6 @@ template <typename Context, typename Iter> inline bool _parse(Context &ctx, inpu
           return true;
         }
       }
-#endif
       f = strtod(num_str.c_str(), &endp);
       if (endp == num_str.c_str() + num_str.size()) {
         ctx.set_number(f);
@@ -920,11 +901,9 @@ public:
   bool set_bool(bool) {
     return false;
   }
-#ifdef PICOJSON_USE_INT64
   bool set_int64(int64_t) {
     return false;
   }
-#endif
   bool set_number(double) {
     return false;
   }
@@ -963,22 +942,20 @@ public:
     *out_ = value(b);
     return true;
   }
-#ifdef PICOJSON_USE_INT64
   bool set_int64(int64_t i) {
     *out_ = value(i);
     return true;
   }
-#endif
   bool set_number(double f) {
     *out_ = value(f);
     return true;
   }
   template <typename Iter> bool parse_string(input<Iter> &in) {
-    *out_ = value(string_type, false);
+    *out_ = value(eValueType::string, false);
     return _parse_string(out_->get<std::string>(), in);
   }
   bool parse_array_start() {
-    *out_ = value(array_type, false);
+    *out_ = value(eValueType::array, false);
     return true;
   }
   template <typename Iter> bool parse_array_item(input<Iter> &in, size_t) {
@@ -991,7 +968,7 @@ public:
     return true;
   }
   bool parse_object_start() {
-    *out_ = value(object_type, false);
+    *out_ = value(eValueType::object, false);
     return true;
   }
   template <typename Iter> bool parse_object_item(input<Iter> &in, const std::string &key) {
@@ -1021,11 +998,9 @@ public:
   bool set_bool(bool) {
     return true;
   }
-#ifdef PICOJSON_USE_INT64
   bool set_int64(int64_t) {
     return true;
   }
-#endif
   bool set_number(double) {
     return true;
   }

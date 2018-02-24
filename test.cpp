@@ -98,11 +98,9 @@ int main(void)
   TEST("\"\\u0061\\u30af\\u30ea\\u30b9\"", string,
        string("a\xe3\x82\xaf\xe3\x83\xaa\xe3\x82\xb9"), false);
   TEST("\"\\ud840\\udc0b\"", string, string("\xf0\xa0\x80\x8b"), false);
-#ifdef PICOJSON_USE_INT64
   TEST("0", int64_t, 0, true);
   TEST("-9223372036854775808", int64_t, std::numeric_limits<int64_t>::min(), true);
   TEST("9223372036854775807", int64_t, std::numeric_limits<int64_t>::max(), true);
-#endif
 #undef TEST
 
 #define TEST(type, expr) {					       \
@@ -288,7 +286,7 @@ int main(void)
     _ok(true, "get<wrong_type>() should raise an error");
   }
 
-#ifdef PICOJSON_USE_INT64
+
   {
     picojson::value v1((int64_t)123);
     _ok(v1.is<int64_t>(), "is int64_t");
@@ -306,7 +304,6 @@ int main(void)
     _ok(v1.is<double>(), "underflowing int is double");
     _ok(v1.get<double>() + 9.22337203685478e+18 < 65536, "double value is somewhat correct");
   }
-#endif
 
   {
     picojson::value v;
@@ -325,12 +322,11 @@ int main(void)
     _ok(! v1.evaluate_as_boolean(), "((double) 0) is false");
     picojson::value v2((double) 1);
     _ok(v2.evaluate_as_boolean(), "((double) 1) is true");
-#ifdef PICOJSON_USE_INT64
+
     picojson::value v3((int64_t) 0);
     _ok(! v3.evaluate_as_boolean(), "((int64_t) 0) is false");
     picojson::value v4((int64_t) 1);
     _ok(v4.evaluate_as_boolean(), "((int64_t) 1) is true");
-#endif
   }
 
   {

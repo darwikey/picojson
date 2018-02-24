@@ -22,6 +22,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <windows.h> 
 #include "picotest.h"
 
 struct test_t {
@@ -38,7 +39,7 @@ static void indent(void)
         printf("    ");
 }
 
-__attribute__((format (printf, 1, 2)))
+//__attribute__((format (printf, 1, 2)))
 void note(const char *fmt, ...)
 {
     va_list arg;
@@ -53,7 +54,7 @@ void note(const char *fmt, ...)
     printf("\n");
 }
 
-__attribute__((format (printf, 2, 3)))
+//__attribute__((format (printf, 2, 3)))
 void _ok(int cond, const char *fmt, ...)
 {
     va_list arg;
@@ -74,6 +75,7 @@ int done_testing(void)
 {
     indent();
     printf("1..%d\n", cur_tests->num_tests);
+	system("pause");
     return cur_tests->failed;
 }
 
