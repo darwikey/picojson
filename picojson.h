@@ -126,8 +126,8 @@ namespace picojson {
 			double number_;
 			int64_t int64_;
 			std::string string_;
-			array *array_;
-			object *object_;
+			array array_;
+			object object_;
 		};
 
 	protected:
@@ -206,10 +206,10 @@ namespace picojson {
 			new (&u_.string_) std::string();
 			break;
 		case eValueType::array:
-			u_.array_ = new array();
+			new (&u_.array_) array();
 			break;
 		case eValueType::object:
-			u_.object_ = new object();
+			new (&u_.object_) object();
 			break;
 		default:
 			break;
@@ -244,11 +244,11 @@ namespace picojson {
 	}
 
 	inline value::value(const array &a) : type_(eValueType::array) {
-		u_.array_ = new array(a);
+		new (&u_.array_) array(a);
 	}
 
 	inline value::value(const object &o) : type_(eValueType::object) {
-		u_.object_ = new object(o);
+		new (&u_.object_) object(o);
 	}
 
 #if PICOJSON_USE_RVALUE_REFERENCE
@@ -280,11 +280,11 @@ namespace picojson {
 			u_.string_.~toto();
 			break;
 		case eValueType::array:
-			delete u_.array_;
+			u_.array_.~array();
 			break;
 
 		case eValueType::object:
-			delete u_.object_;
+			u_.object_.~object();
 			break;
 		default:
 			break;
@@ -301,10 +301,10 @@ namespace picojson {
 			new (&u_.string_) std::string(x.u_.string_);
 			break;
 		case eValueType::array:
-			u_.array_ = new array(*x.u_.array_);
+			new (&u_.array_) array(x.u_.array_);
 			break;
 		case eValueType::object:
-			u_.object_ = new object(*x.u_.object_);
+			new (&u_.object_) object(x.u_.object_);
 			break;
 		default:
 			u_.int64_ = x.u_.int64_;
@@ -320,10 +320,10 @@ namespace picojson {
 				new (&u_.string_) std::string(x.u_.string_);
 				break;
 			case eValueType::array:
-				u_.array_ = new array(*x.u_.array_);
+				new (&u_.array_) array(x.u_.array_);
 				break;
 			case eValueType::object:
-				u_.object_ = new object(*x.u_.object_);
+				new (&u_.object_) object(x.u_.object_);
 				break;
 			default:
 				u_.int64_ = x.u_.int64_;
@@ -373,8 +373,8 @@ namespace picojson {
   }
 	GET(bool, u_.boolean_)
 		GET(std::string, u_.string_)
-		GET(array, *u_.array_)
-		GET(object, *u_.object_)
+		GET(array, u_.array_)
+		GET(object, u_.object_)
 		GET(double,
 		(type_ == eValueType::int64 && (const_cast<value *>(this)->type_ = eValueType::number, const_cast<value *>(this)->u_.number_ = u_.int64_),
 			u_.number_))
@@ -390,8 +390,8 @@ namespace picojson {
   }
 		SET(bool, eValueType::boolean, u_.boolean_ = _val;)
 		SET(std::string, eValueType::string, new(&u_.string_) std::string(_val);)
-		SET(array, eValueType::array, u_.array_ = new array(_val);)
-		SET(object, eValueType::object, u_.object_ = new object(_val);)
+		SET(array, eValueType::array, new (&u_.array_) array(_val);)
+		SET(object, eValueType::object, new (&u_.object_) object(_val);)
 		SET(double, eValueType::number, u_.number_ = _val;)
 		SET(int64_t, eValueType::int64, u_.int64_ = _val;)
 #undef SET
@@ -427,40 +427,40 @@ namespace picojson {
 	}
 
 	inline const value &value::get(const size_t idx) const {
-		static value s_null;
+		static value s_null;//todo to remove
 		PICOJSON_ASSERT(is<array>());
-		return idx < u_.array_->size() ? (*u_.array_)[idx] : s_null;
+		return idx < u_.array_.size() ? u_.array_[idx] : s_null;
 	}
 
 	inline value &value::get(const size_t idx) {
 		static value s_null;
 		PICOJSON_ASSERT(is<array>());
-		return idx < u_.array_->size() ? (*u_.array_)[idx] : s_null;
+		return idx < u_.array_.size() ? u_.array_[idx] : s_null;
 	}
 
 	inline const value &value::get(const std::string &key) const {
 		static value s_null;
 		PICOJSON_ASSERT(is<object>());
-		object::const_iterator i = u_.object_->find(key);
-		return i != u_.object_->end() ? i->second : s_null;
+		object::const_iterator i = u_.object_.find(key);
+		return i != u_.object_.end() ? i->second : s_null;
 	}
 
 	inline value &value::get(const std::string &key) {
 		static value s_null;
 		PICOJSON_ASSERT(is<object>());
-		object::iterator i = u_.object_->find(key);
-		return i != u_.object_->end() ? i->second : s_null;
+		object::iterator i = u_.object_.find(key);
+		return i != u_.object_.end() ? i->second : s_null;
 	}
 
 	inline bool value::contains(const size_t idx) const {
 		PICOJSON_ASSERT(is<array>());
-		return idx < u_.array_->size();
+		return idx < u_.array_.size();
 	}
 
 	inline bool value::contains(const std::string &key) const {
 		PICOJSON_ASSERT(is<object>());
-		object::const_iterator i = u_.object_->find(key);
-		return i != u_.object_->end();
+		object::const_iterator i = u_.object_.find(key);
+		return i != u_.object_.end();
 	}
 
 	inline std::string value::to_str() const {
@@ -573,8 +573,8 @@ namespace picojson {
 			if (indent != -1) {
 				++indent;
 			}
-			for (array::const_iterator i = u_.array_->begin(); i != u_.array_->end(); ++i) {
-				if (i != u_.array_->begin()) {
+			for (array::const_iterator i = u_.array_.begin(); i != u_.array_.end(); ++i) {
+				if (i != u_.array_.begin()) {
 					*oi++ = ',';
 				}
 				if (indent != -1) {
@@ -584,7 +584,7 @@ namespace picojson {
 			}
 			if (indent != -1) {
 				--indent;
-				if (!u_.array_->empty()) {
+				if (!u_.array_.empty()) {
 					_indent(oi, indent);
 				}
 			}
@@ -596,8 +596,8 @@ namespace picojson {
 			if (indent != -1) {
 				++indent;
 			}
-			for (object::const_iterator i = u_.object_->begin(); i != u_.object_->end(); ++i) {
-				if (i != u_.object_->begin()) {
+			for (object::const_iterator i = u_.object_.begin(); i != u_.object_.end(); ++i) {
+				if (i != u_.object_.begin()) {
 					*oi++ = ',';
 				}
 				if (indent != -1) {
@@ -612,7 +612,7 @@ namespace picojson {
 			}
 			if (indent != -1) {
 				--indent;
-				if (!u_.object_->empty()) {
+				if (!u_.object_.empty()) {
 					_indent(oi, indent);
 				}
 			}
