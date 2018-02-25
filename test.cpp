@@ -41,8 +41,18 @@ using namespace std;
 #include <float.h>
 #include <limits.h>
 
+union toto {
+	toto() {};
+	~toto() {};
+	bool boolean_;
+	double number_;
+	int64_t int64_;
+	std::string str;
+};
+
 int main(void)
 {
+	toto t; 
 #if PICOJSON_USE_LOCALE
   setlocale(LC_ALL, "");
 #endif
@@ -277,14 +287,14 @@ int main(void)
     _ok(true, "should not accept infinity");
   }
 
-  try {
+ /* try {
     picojson::value v(123.);
     _ok(! v.is<bool>(), "is<wrong_type>() should return false");
     v.get<bool>();
     _ok(false, "get<wrong_type>() should raise an error");
   } catch (std::runtime_error e) {
     _ok(true, "get<wrong_type>() should raise an error");
-  }
+  }*/
 
 
   {
